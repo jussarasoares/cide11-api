@@ -1,5 +1,8 @@
 const express = require('express')
+const cors = require('cors');
+
 const app = express()
+app.use(cors());
 
 const users = [
     {
@@ -22,7 +25,7 @@ const users = [
 const measures = [
     {
         id: 10,
-        data: new Date(),
+        date: new Date(),
         measure: {
             fast: 100,
             coffee: 100,
@@ -34,7 +37,7 @@ const measures = [
     },
     {
         id: 20,
-        data: new Date(),
+        date: new Date(),
         measure: {
             fast: 100,
             coffee: 100,
@@ -46,7 +49,7 @@ const measures = [
     },
     {
         id: 30,
-        data: new Date(),
+        date: new Date(),
         measure: {
             fast: 100,
             coffee: 100,
@@ -180,7 +183,7 @@ app.put('/measure/edit/:id', function (req, res) {
     })
 })
 
-app.delete('/measure/delete/:id', function (req, res) {
+app.delete('/measure/:id', function (req, res) {
     const measuresFilter = measures.filter(measure => measure.id == req.params.id)
 
     if (measuresFilter.length < 1) {
