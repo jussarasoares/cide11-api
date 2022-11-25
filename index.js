@@ -1,5 +1,10 @@
 const express = require('express')
 const cors = require('cors');
+const config = require('./config')
+const db = require('./services/db')
+const measuresServices = require('./services/measures')
+
+db.connectionDb(config.db)
 
 const app = express()
 app.use(cors());
@@ -104,99 +109,151 @@ app.get('/user/:id', function (req, res) {
   })
 })
 
-app.post('/measure/:id', function (req, res) {
-    const usersFilter = users.filter(user => user.id == req.params.id)
+app.post('/measure/:id', async function (req, res) {
+    try {
+        const errors = []
+        if (!req.body.date) {
+            errors.push({date: "A data é um item obrigatório"})
+        }
+        if (!req.body.measure || (req.body.measure && Object.keys(req.body.measure).length < 1)) {
+            errors.push({measure: "Você precisa ter pelo menos uma medida"})
+        }
+        if (errors.length > 0) {
+            return res.status(400).send({
+                errors: errors,
+                message: 'Preencha os campos obrigatórios'
+            })
+        }
 
-    if (usersFilter.length < 1) {
-        return res.status(400).send({
-            message: 'Usuário não encontrado!'
-         });
-    }
+        const measure = {
+            date: req.body.date,
+            fast: req.body.measure.fast || 0,
+            coffee: req.body.measure.coffee || 0,
+            lunch: req.body.measure.lunch || 0,
+            dinner: req.body.measure.dinner || 0,
+            note: req.body.note || "",
+            userId: req.params.id
+        }
+        const { data } = await measuresServices.createMeasure(measure)
 
-    const errors = []
-    if (!req.body.date) {
-        errors.push({date: "A data é um item obrigatório"})
-    }
-    if (!req.body.measure || (req.body.measure && Object.keys(req.body.measure).length < 1)) {
-        errors.push({measure: "Você precisa ter pelo menos uma medida"})
-    }
-    if (errors.length > 0) {
-        return res.status(400).send({
-            errors: errors,
-            message: 'Preencha os campos obrigatórios'
+        res.send({
+            result: data,
+            message: "Cadastro feito com sucesso"
         })
+    } catch (err) {
+        return res.status(400).send({
+            message: 'Falha na consulta de dados!'
+        });
     }
-
-    const measure = { id: measures.length + 1, date: req.body.date, measure: req.body.measure, note: req.body.note, userId: req.params.id }
-    measures.push(measure)
-
-    res.send({
-        result: measure,
-        message: "Cadastro feito com sucesso"
-    })
 })
 
-app.get('/measure/:userId', function (req, res) {
-    const measureIdFilter = measures.filter(measure => measure.userId == req.params.userId)
+app.get('/user-measure/:userId', async function (req, res) {
+    try {
+        const { data } = await measuresServices.getUserMeasures({ userId: req.params.userId })
 
-    if (measureIdFilter.length < 1) {
-        return res.status(400).send({
-            message: 'Dados não encontrados!'
-         });
-    }
-    res.send({
-        result: measures,
-        message: "sucesso"
-  })
-})
-
-app.put('/measure/edit/:id', function (req, res) {
-    const measuresFilter = measures.filter(measure => measure.id == req.params.id)
-
-    if (measuresFilter.length < 1) {
-        return res.status(400).send({
-            message: 'Medida não encontrada!'
-         });
-    }
-
-    const errors = []
-    if (!req.body.date) {
-        errors.push({date: "A data é um item obrigatório"})
-    }
-    if (!req.body.measure || (req.body.measure && Object.keys(req.body.measure).length < 1)) {
-        errors.push({measure: "Você precisa ter pelo menos uma medida"})
-    }
-    if (errors.length > 0) {
-        return res.status(400).send({
-            errors: errors,
-            message: 'Preencha os campos obrigatórios'
+        if (data.length === 0) {
+            return res.status(400).send({
+                message: 'Dados do usuário não encontrados!'
+            });
+        }
+        res.send({
+            result: data,
+            message: "sucesso"
         })
+    } catch (err) {
+        return res.status(400).send({
+            message: 'Falha na consulta de dados!'
+        });
     }
-
-    const newMeasure = { ...measuresFilter[0], ...req.body }
-    const index = measures.findIndex(measure => measure.id == req.params.id)
-    measures[index] = newMeasure
-
-    res.send({
-        result: newMeasure,
-        message: "Editado com sucesso"
-    })
 })
 
-app.delete('/measure/:id', function (req, res) {
-    const measuresFilter = measures.filter(measure => measure.id == req.params.id)
-
-    if (measuresFilter.length < 1) {
+app.get('/measure/:id', async function (req, res) {
+    try {
+        const { data } = await measuresServices.getMeasureById(req.params.id)
+        
+        if (data.length === 0) {
+            return res.status(400).send({
+                message: 'Medida não encontrada!'
+            });
+        }
+        res.send({
+            result: data[0],
+            message: "sucesso"
+        })
+    } catch (err) {
         return res.status(400).send({
-            message: 'Não foi possível excluir!'
-         });
+            message: 'Falha na consulta de dados!'
+        });
     }
+})
 
-    measures.splice(measuresFilter[0], 1);
+app.put('/measure/edit/:id', async function (req, res) {
+    try {
+        const { data } = await measuresServices.getMeasureById(req.params.id)
+            
+        if (data.length === 0) {
+            return res.status(400).send({
+                message: 'Medida não encontrada!'
+            });
+        }
 
-    res.send({
-        message: "Excluído com sucesso"
-    })
+        const errors = []
+        if (!req.body.date) {
+            errors.push({ date: "A data é um item obrigatório" })
+        }
+        if (!req.body.measure || (req.body.measure && Object.keys(req.body.measure).length < 1)) {
+            errors.push({ measure: "Você precisa ter pelo menos uma medida" })
+        }
+        if (errors.length > 0) {
+            return res.status(400).send({
+                errors: errors,
+                message: 'Preencha os campos obrigatórios'
+            })
+        }
+
+        const measure = {
+            ...data[0],
+            date: req.body.date,
+            fast: req.body.measure.fast || 0,
+            coffee: req.body.measure.coffee || 0,
+            lunch: req.body.measure.lunch || 0,
+            dinner: req.body.measure.dinner || 0,
+            note: req.body.note || "",
+            userId: req.params.id
+        }
+        const result = await measuresServices.updateMeasure(req.params.id, measure)
+
+        res.send({
+            result: result.data,
+            message: "Editado com sucesso"
+        })
+    } catch (err) {
+        return res.status(400).send({
+            message: 'Falha na consulta de dados!'
+        });
+    }
+})
+
+app.delete('/measure/:id', async function (req, res) {
+    try {
+        const { data } = await measuresServices.getMeasureById(req.params.id)
+
+        if (data.length === 0) {
+            return res.status(400).send({
+                message: 'Não foi possível excluir!'
+            });
+        }
+
+        await measuresServices.deleteMeasure(req.params.id)
+
+        res.send({
+            message: "Excluído com sucesso"
+        })
+    } catch (err) {
+        return res.status(400).send({
+            message: 'Falha na consulta de dados!'
+        });
+    }
 })
 
 app.listen(4000)
