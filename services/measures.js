@@ -21,23 +21,15 @@ async function getMeasureById(id) {
 }
 
 async function createMeasure(payload) {
-  const data = await db.query(
+  await db.query(
     `INSERT INTO measures (date, fast, coffee, lunch, dinner, note, userId) VALUES ( "${payload.date}", ${payload.fast}, ${payload.coffee}, ${payload.lunch}, ${payload.dinner}, "${payload.note}", ${payload.userId})`
   )
-
-  return {
-    data
-  }
 }
 
 async function updateMeasure(id, payload) {
-  const data = await db.query(
+  await db.query(
     `UPDATE measures SET date="${payload.date}", fast=${payload.fast}, coffee=${payload.coffee}, lunch=${payload.lunch}, dinner=${payload.dinner}, note="${payload.note}", userId=${payload.userId} WHERE id=${id}`
   )
-
-  return {
-    data
-  }
 }
 
 async function deleteMeasure(id) {

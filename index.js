@@ -2,7 +2,8 @@ const express = require('express')
 const cors = require('cors');
 const config = require('./config')
 const db = require('./services/db')
-const measuresServices = require('./services/measures')
+const measuresServices = require('./services/measures');
+const { formatDateToSql } = require('./services/utils');
 
 db.connectionDb(config.db)
 
@@ -115,9 +116,6 @@ app.post('/measure/:id', async function (req, res) {
         if (!req.body.date) {
             errors.push({date: "A data é um item obrigatório"})
         }
-        if (!req.body.measure || (req.body.measure && Object.keys(req.body.measure).length < 1)) {
-            errors.push({measure: "Você precisa ter pelo menos uma medida"})
-        }
         if (errors.length > 0) {
             return res.status(400).send({
                 errors: errors,
@@ -126,18 +124,17 @@ app.post('/measure/:id', async function (req, res) {
         }
 
         const measure = {
-            date: req.body.date,
-            fast: req.body.measure.fast || 0,
-            coffee: req.body.measure.coffee || 0,
-            lunch: req.body.measure.lunch || 0,
-            dinner: req.body.measure.dinner || 0,
+            date: formatDateToSql(req.body.date),
+            fast: req.body.fast || 0,
+            coffee: req.body.coffee || 0,
+            lunch: req.body.lunch || 0,
+            dinner: req.body.dinner || 0,
             note: req.body.note || "",
-            userId: req.params.id
+            userId: req.body.userId
         }
-        const { data } = await measuresServices.createMeasure(measure)
+        await measuresServices.createMeasure(measure)
 
         res.send({
-            result: data,
             message: "Cadastro feito com sucesso"
         })
     } catch (err) {
@@ -201,9 +198,6 @@ app.put('/measure/edit/:id', async function (req, res) {
         if (!req.body.date) {
             errors.push({ date: "A data é um item obrigatório" })
         }
-        if (!req.body.measure || (req.body.measure && Object.keys(req.body.measure).length < 1)) {
-            errors.push({ measure: "Você precisa ter pelo menos uma medida" })
-        }
         if (errors.length > 0) {
             return res.status(400).send({
                 errors: errors,
@@ -213,18 +207,17 @@ app.put('/measure/edit/:id', async function (req, res) {
 
         const measure = {
             ...data[0],
-            date: req.body.date,
-            fast: req.body.measure.fast || 0,
-            coffee: req.body.measure.coffee || 0,
-            lunch: req.body.measure.lunch || 0,
-            dinner: req.body.measure.dinner || 0,
+            date: formatDateToSql(req.body.date),
+            fast: req.body.fast || 0,
+            coffee: req.body.coffee || 0,
+            lunch: req.body.lunch || 0,
+            dinner: req.body.dinner || 0,
             note: req.body.note || "",
-            userId: req.params.id
+            userId: req.body.userId
         }
-        const result = await measuresServices.updateMeasure(req.params.id, measure)
+        await measuresServices.updateMeasure(req.params.id, measure)
 
         res.send({
-            result: result.data,
             message: "Editado com sucesso"
         })
     } catch (err) {
