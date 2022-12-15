@@ -4,6 +4,7 @@ const config = require('./config')
 const db = require('./services/db')
 const measuresServices = require('./services/measures');
 const { formatDateToSql } = require('./services/utils');
+const { createUser, getUserLogin } = require('./services/users');
 
 db.connectionDb(config.db)
 
@@ -28,48 +29,9 @@ const users = [
     }
 ]
 
-const measures = [
-    {
-        id: 10,
-        date: new Date(),
-        measure: {
-            fast: 100,
-            coffee: 100,
-            lunch: 100,
-            dinner: 100
-        },
-        note: "refrigerante",
-        userId: 1
-    },
-    {
-        id: 20,
-        date: new Date(),
-        measure: {
-            fast: 100,
-            coffee: 100,
-            lunch: 100,
-            dinner: 100
-        },
-        note: "refrigerante",
-        userId: 1
-    },
-    {
-        id: 30,
-        date: new Date(),
-        measure: {
-            fast: 100,
-            coffee: 100,
-            lunch: 100,
-            dinner: 100
-        },
-        note: "refrigerante",
-        userId: 1
-    },
-]
-
 app.use(express.json())
 
-app.post('/user', function (req, res) {
+app.post('/register', async function (req, res) {
     const errors = []
     if (!req.body.name) {
         errors.push({name: "O nome é um item obrigatório"})
@@ -87,13 +49,53 @@ app.post('/user', function (req, res) {
         })
     }
 
-    const user = { id: users.length+1, name: req.body.name, email: req.body.email }
-    users.push(user)
+    const user = req.body
+    const data = await createUser(user)
 
     res.send({
-        result: user,
+        result: {
+            id: data.insertId,
+            name: user.name,
+            email: user.email
+        },
         message: "Usuário criado com sucesso"
     })
+})
+
+app.post('/login', async function (req, res) {
+    try {
+        const errors = []
+        if (!req.body.email) {
+            errors.push({ email: "O email é um item obrigatório" })
+        }
+        if (!req.body.password) {
+            errors.push({ password: "A senha é um item obrigatório" })
+        }
+        if (errors.length > 0) {
+            return res.status(400).send({
+                errors: errors,
+                message: 'Preencha todos os campos'
+            })
+        }
+
+        const user = req.body
+        const { data } = await getUserLogin(user.email, user.password)
+        console.log(data)
+
+        res.send({
+            result: {
+                id: data[0].id,
+                name: data[0].name,
+                email: data[0].email
+            },
+            message: "Login efetuado com sucesso"
+        })
+    } catch (err) {
+        console.log(err)
+        return res.status(400).send({
+            message: 'Falha ao efetuar login!'
+        });
+    }
 })
 
 app.get('/user/:id', function (req, res) {
@@ -130,10 +132,9 @@ app.post('/measure/:id', async function (req, res) {
             lunch: req.body.lunch || 0,
             dinner: req.body.dinner || 0,
             note: req.body.note || "",
-            userId: req.body.userId
+            userId: req.params.id
         }
         await measuresServices.createMeasure(measure)
-
         res.send({
             message: "Cadastro feito com sucesso"
         })
